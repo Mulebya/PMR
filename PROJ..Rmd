@@ -1,0 +1,119 @@
+------------------------------------------------------------------------
+
+---
+title: "PMR Project 2024"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+# Empirical Independence Tests
+
+Conditional Independence in Graphical models.
+
+$H_0 : x \perp y | z$ for the structure
+
+![](images/proj.jpg)
+
+$H_1 : x \not \perp y | z$ otherwise
+
+## MI
+
+Uses statistical tests such as $\mathcal{X^2}$.
+
+$MI(x;y, z) = \sum\limits_i \sum\limits_{x,y,z} {p(x,y,z) log \dfrac{P(x,y|z)}{p(x|z)p(y|z)}}$
+
+$x,y$ are conditionally independent when the test's p-value $>\alpha$
+
+## Bayesian Conditional Independence Test
+
+Uses a Bayes Factor (BF) as a marginal likelihood ratio
+
+$BF = \dfrac {p(x,y,z |H_0)}{p(x,y,z|H_1)}$
+
+Given the dataset \$ \\mathcal{D} = \\{x,y,z\\}\$; $BF = \dfrac{p(H_0 | \mathcal{D}) / p(H_0)}{p(H_1 | \mathcal{D}) / p(H_1)}$
+
+$x \perp y |z \text{ holds  as } BF > 1$
+
+## Example
+
+Data:
+
+|             |     |     |     |     |     |     |     |
+|-------------|-----|-----|-----|-----|-----|-----|-----|
+| Lung Cancer | 1   | 0   | 1   | 0   | 1   | 0   | 1   |
+| Smoking     | 1   | 0   | 1   | 1   | 1   | 0   | 0   |
+| Asbestos    | 1   | 1   | 0   | 0   | 1   | 0   | 1   |
+
+: States: {0,1}
+
+```{r}
+library(bnlearn)
+asbestos = factor(c(1,1,0,0,1,0,1)) ; levels(asbestos)=list(high=1, low=0)
+smok = factor(c(1,0,1,1,1,0,0)) ; levels(smok)=list(yes=1, no=0)
+cancer_l = factor(c(1,0,1,0,1,0,1)) ; levels(cancer_l)=list(yes=1, no=0)
+data = data.frame(asbestos, smok, cancer_l)
+
+```
+
+```{r MI}
+##MI
+eit=ci.test(data, test = 'mi')
+eit
+ci.test(smok,asbestos, cancer_l, test = 'mi')
+ci.test(data, test = 'x2')
+```
+
+```{r BF}
+##BF
+model=model2network('[asbestos][smok][cancer_l|smok:asbestos]')#H_0
+#Model=model2network('[cancer_l][smok|cancer_l][asbestos |cancer_l]')6params
+Model=model2network('[cancer_l][smok|cancer_l][asbestos]')#H1
+BF(Model,model,data=data)#BF(model,Model,data=data, score='bde')
+1/BF(Model,model,data=data)
+
+```
+
+$BF_{H_1 H_0} = 0.685179$ and $BF_{H_1 H_0} = 1.459473$
+
+```{r DAG_HC}
+m0 = hc(data, score='bic', debug=TRUE)  #Hill Climbing Search to form DAG
+```
+
+```{r BIC_DAG}
+#library(bnstruct)
+#library(igraph)
+#comparing scores in general for the data vs DAG generated
+score(m0, data, type='bic')
+score(m0, data, type='loglik')
+```
+
+```{r BIC}
+#computing scores from models under hypotheses
+score(model, data, type='bic')
+score(Model, data, type='bic')
+score(Model, data, type='loglik')
+score(model, data, type='loglik')
+
+```
+
+```{r BF Vs BIC}
+#comparing BF & BIC
+BF(model,Model,data=data)
+score(model, data, type='bic') - score(Model, data, type='bic')
+#for log-likelihood ratio
+score(model, data, type='loglik')-score(Model, data, type='loglik')
+```
+
+```{r d sep}
+#Checking conditional Independence property
+dsep(model, 'asbestos', 'smok', 'cancer_l')
+dsep(Model, 'asbestos', 'smok', 'cancer_l')
+```
+
+```{r Plot}
+##Model plots
+par(mfrow=c(1,2))
+plot(model)
+plot(Model)
+```
