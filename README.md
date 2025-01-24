@@ -1,2 +1,2 @@
-# PMR
+# Probability Modelling and Reasoning
 
