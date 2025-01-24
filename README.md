@@ -1,2 +1,2 @@
 # PMR
-Independency
+Empirical Independence Tests
